@@ -135,13 +135,15 @@
             background: var(--bg);
         }
         .logo { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
-
-        .products-section { padding: 140px 40px 80px; }
-        .products-inner { max-width: 1400px; margin: 0 auto; }
-        .products-title {
-            font-size: clamp(48px, 8vw, 80px); font-weight: 600;
-            letter-spacing: -0.04em; line-height: .9; margin-bottom: 60px;
+        .home-btn {
+            background: var(--fg); color: var(--bg); border: 2px solid var(--fg);
+            border-radius: 999px; padding: 10px 18px;
+            font-size: 14px; font-weight: 600; transition: background .3s, color .3s;
         }
+        .home-btn:hover { background: var(--bg); color: var(--fg); }
+
+        .products-section { padding: 100px 40px 80px; }
+        .products-inner { max-width: 1400px; margin: 0 auto; }
         .products-grid {
             display: flex;
             gap: 20px;
@@ -150,29 +152,26 @@
         .product-col {
             flex: 1;
         }
+        .product-col:last-child {
+            padding-top: var(--right-col-offset, 0px);
+        }
         .product-card {
             margin-bottom: 16px;
         }
 
-        /* Staggered diagonal per column - each item offset */
-        .product-col:first-child .product-card:nth-child(4n+1) { margin-top: 0; }
-        .product-col:first-child .product-card:nth-child(4n+2) { margin-top: 36px; }
-        .product-col:first-child .product-card:nth-child(4n+3) { margin-top: 72px; }
-        .product-col:first-child .product-card:nth-child(4n) { margin-top: 108px; }
-        .product-col:last-child .product-card:nth-child(4n+1) { margin-top: 18px; }
-        .product-col:last-child .product-card:nth-child(4n+2) { margin-top: 54px; }
-        .product-col:last-child .product-card:nth-child(4n+3) { margin-top: 90px; }
-        .product-col:last-child .product-card:nth-child(4n) { margin-top: 126px; }
         .product-card {
             display: block; background: #fff; border-radius: 8px; overflow: hidden;
+            transform-origin: center center;
+            will-change: transform, opacity, filter;
         }
         .product-media {
-            width: 100%; overflow: hidden; background: var(--gray-2);
+            width: 100%; aspect-ratio: 3 / 4; overflow: hidden; background: var(--gray-2);
+            display: flex; align-items: center; justify-content: center;
         }
         .product-media img {
-            width: 100%; height: auto; display: block;
+            width: 100%; height: 100%; display: block; object-fit: contain;
             transform-origin: center center;
-            will-change: transform;
+            will-change: transform, filter;
         }
         .product-info { padding: 10px 8px 12px; }
         .product-name {
@@ -180,20 +179,10 @@
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
-        /* Product Card Hover */
         .product-card {
             position: relative;
             cursor: pointer;
         }
-        .product-card .material-tooltip {
-            position: absolute; top: 12px; left: 12px; right: 12px;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
-            padding: 10px 14px; border-radius: 8px; font-size: 12px;
-            color: #333; opacity: 0; transform: translateY(8px);
-            transition: opacity .3s, transform .3s; pointer-events: none;
-            z-index: 10; text-align: center;
-        }
-        .product-card:hover .material-tooltip { opacity: 1; transform: translateY(0); }
 
         /* Product Detail Modal */
         .product-modal {
@@ -219,10 +208,10 @@
         }
         .product-modal-close:hover { opacity: 1; }
         .product-modal-img {
-            width: 100%; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden;
-            background: var(--gray-2); margin-bottom: 20px;
+            width: calc(100% + 64px); border-radius: 16px 16px 12px 12px; overflow: hidden;
+            background: var(--gray-2); margin: -32px -32px 24px;
         }
-        .product-modal-img img { width: 100%; height: 100%; object-fit: contain; }
+        .product-modal-img img { width: 100%; height: auto; object-fit: contain; }
         .product-modal-price {
             font-size: 22px; font-weight: 600; margin-bottom: 16px;
         }
@@ -263,7 +252,7 @@
         /* Responsive */
         @media (max-width: 768px) {
             .header { padding: 20px; }
-            .products-section { padding: 100px 20px 60px; }
+            .products-section { padding: 84px 20px 60px; }
             .size-picker-row { grid-template-columns: 1fr; }
         }
     </style>
@@ -317,11 +306,11 @@
     <div class="products-page" id="productsPage">
         <header class="header">
             <div class="logo">Cô Mập Fashion</div>
+            <button class="home-btn" id="homeBtn" type="button">Home</button>
         </header>
 
         <section class="products-section">
             <div class="products-inner">
-                <h2 class="products-title">Sản phẩm<br>nổi bật</h2>
                 <div class="products-grid" id="productsGrid">
                 <div class="product-col" id="colLeft"></div>
                 <div class="product-col" id="colRight"></div>
@@ -456,6 +445,8 @@
         document.getElementById('sizeSuggestionApply').addEventListener('click', async () => {
             if (suggestedSize) await selectSize(suggestedSize);
         });
+        document.getElementById('homeBtn').addEventListener('click', goHome);
+        window.addEventListener('resize', updateProductColumnOffset);
 
         function initSizeSuggestion() {
             fillNumberSelect('weightSelect', 46, 75, 'kg');
@@ -593,7 +584,6 @@
                                 : `<div style="width:100%;height:100%;background:var(--gray-2);"></div>`
                             }
                         </div>
-                        ${p.material ? `<div class="material-tooltip">${p.material}</div>` : ''}
                     </div>`;
                 const num = parseInt(p.code.replace(/\D/g, '')) || 0;
                 if (num % 2 === 0) leftHtml.push(html);
@@ -603,6 +593,7 @@
             leftCol.innerHTML = leftHtml.join('');
             rightCol.innerHTML = rightHtml.join('');
 
+            updateProductColumnOffset();
             animateProductImages();
 
             // Delegated click on cards
@@ -628,23 +619,93 @@
                 const img = card.querySelector('.product-media img');
                 if (!img) return;
 
-                gsap.set(img, { scale: 1 });
+                gsap.set(card, { opacity: 0.72, y: 42, scale: 0.96, filter: 'blur(5px)' });
+                gsap.set(img, { scale: 0.92, yPercent: 3, filter: 'saturate(0.85)' });
+
+                const revealTween = gsap.to(card, {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    filter: 'blur(0px)',
+                    duration: 0.8,
+                    ease: 'power3.out',
+                    scrollTrigger: {
+                        trigger: card,
+                        start: 'top 88%',
+                        toggleActions: 'play none none reverse'
+                    }
+                });
 
                 const timeline = gsap.timeline({
                     scrollTrigger: {
                         trigger: card,
-                        start: 'top bottom',
-                        end: 'bottom top',
-                        scrub: 0.8
+                        start: 'top 95%',
+                        end: 'bottom 5%',
+                        scrub: 0.55
                     }
                 });
 
                 timeline
-                    .to(img, { scale: 1.06, duration: 0.5, ease: 'none' })
-                    .to(img, { scale: 1, duration: 0.5, ease: 'none' });
+                    .to(img, { scale: 1.16, yPercent: -2, filter: 'saturate(1.08) contrast(1.03)', duration: 0.5, ease: 'none' })
+                    .to(img, { scale: 1.02, yPercent: -5, filter: 'saturate(1) contrast(1)', duration: 0.5, ease: 'none' });
 
                 window._productImageTriggers.push(timeline.scrollTrigger);
+                window._productImageTriggers.push(revealTween.scrollTrigger);
             });
+        }
+
+        function updateProductColumnOffset() {
+            const grid = document.getElementById('productsGrid');
+            const firstMedia = document.querySelector('#colLeft .product-media, #colRight .product-media');
+            if (!grid || !firstMedia) {
+                document.documentElement.style.setProperty('--right-col-offset', '0px');
+                return;
+            }
+
+            document.documentElement.style.setProperty(
+                '--right-col-offset',
+                `${firstMedia.getBoundingClientRect().height / 2}px`
+            );
+        }
+
+        function resetProductGrid() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = `
+                <div class="product-col" id="colLeft"></div>
+                <div class="product-col" id="colRight"></div>
+            `;
+            window._productMap = {};
+            updateProductColumnOffset();
+        }
+
+        function goHome() {
+            closeModal();
+
+            if (window._productImageTriggers) {
+                window._productImageTriggers.forEach(trigger => trigger.kill());
+                window._productImageTriggers = [];
+            }
+
+            const welcome = document.getElementById('welcome');
+            const sizeScreen = document.getElementById('sizeScreen');
+            const productsPage = document.getElementById('productsPage');
+            const loading = document.getElementById('loading');
+
+            loading.classList.remove('active');
+            productsPage.classList.remove('visible');
+            sizeScreen.style.opacity = '0';
+            sizeScreen.style.visibility = 'hidden';
+            sizeScreen.style.pointerEvents = 'none';
+            welcome.classList.remove('hidden');
+            resetProductGrid();
+
+            if (lenis) {
+                lenis.start();
+                lenis.scrollTo(0, { immediate: true });
+                lenis.resize();
+            } else {
+                window.scrollTo(0, 0);
+            }
         }
 
         // Product Modal
