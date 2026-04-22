@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cô Mập Fashion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #000000;
+            --gray-1: #888888;
+            --gray-2: #f5f5f5;
+            --gray-3: #e5e5e5;
+            --accent: #ff3b00;
+            --ease: cubic-bezier(0.76, 0, 0.24, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            cursor: none;
+        }
+        a, button { color: inherit; text-decoration: none; cursor: none; }
+        img { display: block; max-width: 100%; }
+
+        /* Custom Cursor */
+        .cursor, .cursor-follower {
+            position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%); border-radius: 50%; mix-blend-mode: difference;
+        }
+        .cursor { width: 8px; height: 8px; background: #fff; transition: width .3s, height .3s, background .3s; }
+        .cursor-follower { width: 36px; height: 36px; border: 1px solid rgba(255,255,255,.5); transition: width .3s, height .3s, border-color .3s; }
+        .cursor.hover { width: 48px; height: 48px; background: rgba(255,255,255,.15); }
+        .cursor-follower.hover { width: 64px; height: 64px; border-color: transparent; background: rgba(255,255,255,.1); }
+        @media (pointer: coarse) { .cursor, .cursor-follower { display: none; } body, a, button { cursor: auto; } }
+
+        /* Welcome Screen */
+        .welcome {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+            transition: opacity .6s var(--ease), visibility .6s;
+            overflow-y: auto; padding: 32px 20px;
+        }
+        .welcome.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .welcome-inner { text-align: center; }
+        .welcome-logo {
+            font-size: 14px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+            color: var(--gray-1); margin-bottom: 80px;
+        }
+        .welcome-title {
+            font-size: clamp(48px, 10vw, 96px); font-weight: 600;
+            letter-spacing: -0.03em; line-height: 1; margin-bottom: 60px;
+        }
+        .size-btn {
+            font-size: clamp(80px, 20vw, 200px); font-weight: 600;
+            letter-spacing: -0.05em; line-height: 1; background: none; border: none;
+            position: relative; padding: 20px 40px;
+        }
+        .size-btn::after {
+            content: ''; position: absolute; left: 0; bottom: 0; width: 100%; height: 4px;
+            background: var(--accent); transform: scaleX(0); transform-origin: left;
+            transition: transform .6s var(--ease);
+        }
+        .size-btn:hover::after { transform: scaleX(1); }
+
+        .size-options {
+            display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+        }
+        .size-option {
+            font-size: clamp(32px, 6vw, 64px); font-weight: 600;
+            letter-spacing: -0.02em; background: none; border: 2px solid var(--fg);
+            padding: 16px 32px; border-radius: 12px; transition: background .3s, color .3s;
+        }
+        .size-option:hover { background: var(--fg); color: var(--bg); }
+        .size-tools {
+            margin-top: 32px; display: flex; flex-direction: column;
+            align-items: center; gap: 18px;
+        }
+        .size-suggest-btn {
+            font-size: 16px; font-weight: 600; background: var(--fg); color: var(--bg);
+            border: 2px solid var(--fg); border-radius: 999px; padding: 14px 24px;
+            transition: background .3s, color .3s;
+        }
+        .size-suggest-btn:hover { background: var(--bg); color: var(--fg); }
+        .size-suggest-panel {
+            width: min(520px, 100%); display: none; gap: 18px;
+        }
+        .size-suggest-panel.active { display: grid; }
+        .size-picker-row {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+        }
+        .size-picker-field {
+            display: grid; gap: 8px; text-align: left;
+        }
+        .size-picker-field label {
+            font-size: 12px; font-weight: 600; color: var(--gray-1);
+            letter-spacing: .12em; text-transform: uppercase;
+        }
+        .size-picker-field select {
+            width: 100%; min-height: 56px; border: 2px solid var(--fg);
+            border-radius: 10px; background: var(--bg); color: var(--fg);
+            font: inherit; font-size: 20px; font-weight: 600; padding: 0 14px;
+        }
+        .size-suggestion-result {
+            min-height: 40px; font-size: 18px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .size-result-button {
+            justify-self: center; background: var(--accent); color: var(--bg);
+            border: none; border-radius: 999px; padding: 14px 26px;
+            font-size: 16px; font-weight: 600;
+        }
+        .size-result-button:disabled {
+            background: var(--gray-3); color: var(--gray-1); pointer-events: none;
+        }
+
+        /* Products Section */
+        .products-page {
+            min-height: 100vh; opacity: 0; transition: opacity .6s var(--ease);
+        }
+        .products-page.visible { opacity: 1; }
+
+        .header {
+            position: fixed; top: 0; left: 0; width: 100%; padding: 28px 40px;
+            display: flex; justify-content: space-between; align-items: center; z-index: 100;
+            background: var(--bg);
+        }
+        .logo { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+
+        .products-section { padding: 140px 40px 80px; }
+        .products-inner { max-width: 1400px; margin: 0 auto; }
+        .products-title {
+            font-size: clamp(48px, 8vw, 80px); font-weight: 600;
+            letter-spacing: -0.04em; line-height: .9; margin-bottom: 60px;
+        }
+        .products-grid {
+            display: flex;
+            gap: 20px;
+            padding: 0 8px;
+        }
+        .product-col {
+            flex: 1;
+        }
+        .product-card {
+            margin-bottom: 16px;
+        }
+
+        /* Staggered diagonal per column - each item offset */
+        .product-col:first-child .product-card:nth-child(4n+1) { margin-top: 0; }
+        .product-col:first-child .product-card:nth-child(4n+2) { margin-top: 36px; }
+        .product-col:first-child .product-card:nth-child(4n+3) { margin-top: 72px; }
+        .product-col:first-child .product-card:nth-child(4n) { margin-top: 108px; }
+        .product-col:last-child .product-card:nth-child(4n+1) { margin-top: 18px; }
+        .product-col:last-child .product-card:nth-child(4n+2) { margin-top: 54px; }
+        .product-col:last-child .product-card:nth-child(4n+3) { margin-top: 90px; }
+        .product-col:last-child .product-card:nth-child(4n) { margin-top: 126px; }
+        .product-card {
+            display: block; background: #fff; border-radius: 8px; overflow: hidden;
+        }
+        .product-media {
+            width: 100%; overflow: hidden; background: var(--gray-2);
+        }
+        .product-media img {
+            width: 100%; height: auto; display: block;
+            transform-origin: center center;
+            will-change: transform;
+        }
+        .product-info { padding: 10px 8px 12px; }
+        .product-name {
+            font-size: 13px; font-weight: 400; color: #333;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* Product Card Hover */
+        .product-card {
+            position: relative;
+            cursor: pointer;
+        }
+        .product-card .material-tooltip {
+            position: absolute; top: 12px; left: 12px; right: 12px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+            padding: 10px 14px; border-radius: 8px; font-size: 12px;
+            color: #333; opacity: 0; transform: translateY(8px);
+            transition: opacity .3s, transform .3s; pointer-events: none;
+            z-index: 10; text-align: center;
+        }
+        .product-card:hover .material-tooltip { opacity: 1; transform: translateY(0); }
+
+        /* Product Detail Modal */
+        .product-modal {
+            position: fixed; inset: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity .4s, visibility .4s;
+        }
+        .product-modal.active { opacity: 1; visibility: visible; }
+        .product-modal-backdrop {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+        }
+        .product-modal-inner {
+            position: relative; background: #fff; border-radius: 16px;
+            max-width: 480px; width: 90%; max-height: 85vh; overflow-y: auto;
+            padding: 32px; transform: translateY(20px);
+            transition: transform .4s var(--ease);
+        }
+        .product-modal.active .product-modal-inner { transform: translateY(0); }
+        .product-modal-close {
+            position: absolute; top: 16px; right: 16px;
+            background: none; border: none; font-size: 28px; line-height: 1;
+            cursor: none; opacity: 0.5; transition: opacity .3s;
+        }
+        .product-modal-close:hover { opacity: 1; }
+        .product-modal-img {
+            width: 100%; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden;
+            background: var(--gray-2); margin-bottom: 20px;
+        }
+        .product-modal-img img { width: 100%; height: 100%; object-fit: contain; }
+        .product-modal-price {
+            font-size: 22px; font-weight: 600; margin-bottom: 16px;
+        }
+        .product-modal-label {
+            font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+            color: var(--gray-1); margin-bottom: 4px;
+        }
+        .product-modal-material {
+            font-size: 14px; margin-bottom: 16px; color: #333;
+        }
+        .product-modal-desc {
+            font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 20px;
+        }
+        .product-modal-sizes {
+            display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;
+        }
+        .modal-size-tag {
+            font-size: 13px; font-weight: 500; padding: 8px 16px;
+            border-radius: 8px; border: 1px solid var(--gray-3);
+            color: var(--gray-1);
+        }
+        .modal-size-tag.available {
+            border-color: var(--fg); color: var(--fg); background: #fff;
+        }
+        .modal-size-tag.unavailable {
+            opacity: 0.4; text-decoration: line-through;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed; inset: 0; background: var(--bg); z-index: 900;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s;
+        }
+        .loading.active { opacity: 1; visibility: visible; }
+        .loading-text { font-size: 14px; letter-spacing: .2em; text-transform: uppercase; color: var(--gray-1); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { padding: 20px; }
+            .products-section { padding: 100px 20px 60px; }
+            .size-picker-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <span class="loading-text">Loading...</span>
+    </div>
+
+    <!-- Welcome Screen -->
+    <div class="welcome" id="welcome">
+        <div class="welcome-inner">
+            <div class="welcome-logo">Cô Mập Fashion</div>
+            <h1 class="welcome-title">Chọn size của bạn</h1>
+            <button class="size-btn magnetic" id="sizeBtn">SIZE</button>
+        </div>
+    </div>
+
+    <!-- Size Selection Screen -->
+    <div class="welcome" id="sizeScreen" style="opacity:0;visibility:hidden;pointer-events:none;">
+        <div class="welcome-inner">
+            <div class="welcome-logo">Cô Mập Fashion</div>
+            <h1 class="welcome-title">Size của bạn</h1>
+            <div class="size-options" id="sizeOptions"></div>
+            <div class="size-tools">
+                <button class="size-suggest-btn" id="sizeSuggestBtn">Gợi ý size</button>
+                <div class="size-suggest-panel" id="sizeSuggestPanel">
+                    <div class="size-picker-row">
+                        <div class="size-picker-field">
+                            <label for="weightSelect">Cân nặng</label>
+                            <select id="weightSelect"></select>
+                        </div>
+                        <div class="size-picker-field">
+                            <label for="waistSelect">Vòng eo</label>
+                            <select id="waistSelect"></select>
+                        </div>
+                    </div>
+                    <div class="size-suggestion-result" id="sizeSuggestionResult"></div>
+                    <button class="size-result-button" id="sizeSuggestionApply" type="button">Xem sản phẩm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Page -->
+    <div class="products-page" id="productsPage">
+        <header class="header">
+            <div class="logo">Cô Mập Fashion</div>
+        </header>
+
+        <section class="products-section">
+            <div class="products-inner">
+                <h2 class="products-title">Sản phẩm<br>nổi bật</h2>
+                <div class="products-grid" id="productsGrid">
+                <div class="product-col" id="colLeft"></div>
+                <div class="product-col" id="colRight"></div>
+            </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div class="product-modal" id="productModal">
+        <div class="product-modal-backdrop" id="modalBackdrop"></div>
+        <div class="product-modal-inner">
+            <button class="product-modal-close" id="modalClose">×</button>
+            <div class="product-modal-img" id="modalImg"></div>
+            <div class="product-modal-price" id="modalPrice"></div>
+            <div class="product-modal-label">Chất liệu</div>
+            <div class="product-modal-material" id="modalMaterial"></div>
+            <div class="product-modal-label">Đặc điểm</div>
+            <div class="product-modal-desc" id="modalDesc"></div>
+            <div class="product-modal-label">Kích thước hiện có</div>
+            <div class="product-modal-sizes" id="modalSizes"></div>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/lenis@1.1.16/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        const lenis = new Lenis({
+            duration: 1.4,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            smoothWheel: true,
+            wheelMultiplier: 1,
+            touchMultiplier: 2,
+        });
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => lenis.raf(time * 1000));
+        gsap.ticker.lagSmoothing(0);
+
+        // Custom Cursor
+        const cursor = document.querySelector('.cursor');
+        const follower = document.querySelector('.cursor-follower');
+        let mouseX = 0, mouseY = 0, posX = 0, posY = 0;
+        window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+        gsap.ticker.add(() => {
+            posX += (mouseX - posX) * 0.2;
+            posY += (mouseY - posY) * 0.2;
+            gsap.set(cursor, { x: mouseX, y: mouseY });
+            gsap.set(follower, { x: posX, y: posY });
+        });
+        document.querySelectorAll('a, button').forEach(el => {
+            el.addEventListener('mouseenter', () => { cursor.classList.add('hover'); follower.classList.add('hover'); });
+            el.addEventListener('mouseleave', () => { cursor.classList.remove('hover'); follower.classList.remove('hover'); });
+        });
+
+        // Magnetic effect
+        document.querySelectorAll('.magnetic').forEach(btn => {
+            btn.addEventListener('mousemove', e => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                gsap.to(btn, { x: x * 0.3, y: y * 0.3, duration: 0.4, ease: 'power2.out' });
+            });
+            btn.addEventListener('mouseleave', () => gsap.to(btn, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1,0.3)' }));
+        });
+
+        const SIZE_OPTIONS = [
+            { label: 'M', value: 'M', minWeight: 46, maxWeight: 52, waistMax: 74 },
+            { label: 'L', value: 'L', minWeight: 53, maxWeight: 57, waistMax: 78 },
+            { label: 'XL', value: 'XL', minWeight: 58, maxWeight: 63, waistMax: 83 },
+            { label: 'XXL', value: 'XXL', minWeight: 64, maxWeight: 68, waistMax: 88 },
+            { label: '3XL', value: 'XXXL', minWeight: 69, maxWeight: 75, waistMax: 92 }
+        ];
+        const SIZE_ORDER = SIZE_OPTIONS.map(size => size.value);
+        const SIZE_LABELS = SIZE_OPTIONS.reduce((labels, size) => {
+            labels[size.value] = size.label;
+            return labels;
+        }, {});
+        let suggestedSize = '';
+
+        // Step 1: Click SIZE → show size selection
+        document.getElementById('sizeBtn').addEventListener('click', () => {
+            const welcome = document.getElementById('welcome');
+            const sizeScreen = document.getElementById('sizeScreen');
+
+            welcome.classList.add('hidden');
+            sizeScreen.style.visibility = 'visible';
+            sizeScreen.style.opacity = '1';
+            sizeScreen.style.pointerEvents = 'auto';
+
+            // Render size options
+            const sizeOptions = document.getElementById('sizeOptions');
+            sizeOptions.innerHTML = SIZE_ORDER.map(size =>
+                `<button class="size-option magnetic" data-size="${size}">${SIZE_LABELS[size] || size}</button>`
+            ).join('');
+            initSizeSuggestion();
+
+            // Re-attach magnetic effect to new buttons
+            document.querySelectorAll('.size-option.magnetic').forEach(btn => {
+                btn.addEventListener('mousemove', e => {
+                    const rect = btn.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    gsap.to(btn, { x: x * 0.2, y: y * 0.2, duration: 0.4, ease: 'power2.out' });
+                });
+                btn.addEventListener('mouseleave', () => gsap.to(btn, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1,0.3)' }));
+                btn.addEventListener('mouseenter', () => { cursor.classList.add('hover'); follower.classList.add('hover'); });
+                btn.addEventListener('mouseleave', () => { cursor.classList.remove('hover'); follower.classList.remove('hover'); });
+            });
+        });
+
+        // Step 2: User picks a size → load products
+        document.getElementById('sizeOptions').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.size-option');
+            if (!btn) return;
+
+            await selectSize(btn.dataset.size);
+        });
+
+        document.getElementById('sizeSuggestBtn').addEventListener('click', () => {
+            const panel = document.getElementById('sizeSuggestPanel');
+            panel.classList.toggle('active');
+            updateSuggestedSize();
+        });
+
+        document.getElementById('weightSelect').addEventListener('change', updateSuggestedSize);
+        document.getElementById('waistSelect').addEventListener('change', updateSuggestedSize);
+        document.getElementById('sizeSuggestionApply').addEventListener('click', async () => {
+            if (suggestedSize) await selectSize(suggestedSize);
+        });
+
+        function initSizeSuggestion() {
+            fillNumberSelect('weightSelect', 46, 75, 'kg');
+            fillNumberSelect('waistSelect', 68, 92, 'cm');
+            updateSuggestedSize();
+        }
+
+        function fillNumberSelect(selectId, min, max, suffix) {
+            const select = document.getElementById(selectId);
+            if (select.options.length) return;
+
+            select.innerHTML = Array.from({ length: max - min + 1 }, (_, index) => {
+                const value = min + index;
+                return `<option value="${value}">${value} ${suffix}</option>`;
+            }).join('');
+        }
+
+        function updateSuggestedSize() {
+            const weight = Number(document.getElementById('weightSelect').value);
+            const waist = Number(document.getElementById('waistSelect').value);
+            const result = document.getElementById('sizeSuggestionResult');
+            const applyBtn = document.getElementById('sizeSuggestionApply');
+            const size = SIZE_OPTIONS.find(option =>
+                weight <= option.maxWeight && waist < option.waistMax
+            );
+
+            suggestedSize = size ? size.value : '';
+            result.textContent = size ? `Gợi ý: ${size.label}` : 'Chưa có size phù hợp';
+            applyBtn.disabled = !size;
+            applyBtn.textContent = size ? `Xem size ${size.label}` : 'Xem sản phẩm';
+        }
+
+        async function selectSize(selectedSize) {
+            const sizeScreen = document.getElementById('sizeScreen');
+            const loading = document.getElementById('loading');
+            const productsPage = document.getElementById('productsPage');
+
+            sizeScreen.style.opacity = '0';
+            sizeScreen.style.visibility = 'hidden';
+            sizeScreen.style.pointerEvents = 'none';
+            loading.classList.add('active');
+
+            await fetchProducts(selectedSize);
+            lenis.resize();
+
+            loading.classList.remove('active');
+            productsPage.classList.add('visible');
+            requestAnimationFrame(() => ScrollTrigger.refresh());
+        }
+
+        async function fetchProducts(selectedSize) {
+            const supabaseUrl = 'https://bzprdfenwtzklwslgerv.supabase.co';
+            const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6cHJkZmVud3R6a2x3c2xnZXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODczNjMsImV4cCI6MjA3NzU2MzM2M30.eQ8Yz3vNnYFa3ZUe82RTqD8ebWu3oL69RxDtrd-qflo';
+
+            let products = [];
+            try {
+                const res = await fetch(`${supabaseUrl}/rest/v1/products_web?select=*&order=id.desc`, {
+                    headers: {
+                        apikey: anonKey,
+                        Authorization: `Bearer ${anonKey}`
+                    }
+                });
+                if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+                products = await res.json();
+            } catch (err) {
+                console.error('Fetch error:', err);
+                document.getElementById('productsGrid').innerHTML =
+                    '<p style="grid-column:1/-1;text-align:center;color:var(--accent);padding:80px 0;">Lỗi tải dữ liệu. Vui lòng thử lại.</p>';
+                return;
+            }
+
+            // Filter: A and N codes only, with stock > 0 for selectedSize
+            let available = products.filter(p => {
+                if (!p.sizes || p.sizes.length === 0) return false;
+                const code = (p.code || '').toUpperCase();
+                if (!code.startsWith('A') && !code.startsWith('N')) return false;
+                const sizeObj = p.sizes.find(s => s.size === selectedSize);
+                return sizeObj && sizeObj.stock > 0;
+            });
+
+            // Sort descending by number within each letter group (A first, then N)
+            available.sort((a, b) => {
+                const getNum = (code) => parseInt(code.replace(/\D/g, '')) || 0;
+                const aIsA = a.code.toUpperCase().startsWith('A');
+                const bIsA = b.code.toUpperCase().startsWith('A');
+                if (aIsA && !bIsA) return -1;
+                if (!aIsA && bIsA) return 1;
+                return getNum(b.code) - getNum(a.code);
+            });
+
+            // Split: left = even (A998), right = odd (A997)
+            const left = [];
+            const right = [];
+            available.forEach(p => {
+                const num = parseInt(p.code.replace(/\D/g, '')) || 0;
+                if (num % 2 === 0) left.push(p);
+                else right.push(p);
+            });
+            // Interleave: A999,A997,... then continue down each column
+            available = [];
+            const maxLen = Math.max(left.length, right.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (i < left.length) available.push(left[i]);
+                if (i < right.length) available.push(right[i]);
+            }
+
+            renderProducts(available, selectedSize);
+        }
+
+        function renderProducts(products, selectedSize) {
+            const grid = document.getElementById('productsGrid');
+
+            if (products.length === 0) {
+                grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--gray-1);padding:80px 0;">Không có sản phẩm nào</p>';
+                return;
+            }
+
+            const leftCol = document.getElementById('colLeft');
+            const rightCol = document.getElementById('colRight');
+            const leftHtml = [];
+            const rightHtml = [];
+
+            // Store products globally for click handling
+            window._productMap = {};
+
+            products.forEach((p, idx) => {
+                const safeIdx = 'p' + idx;
+                window._productMap = window._productMap || {};
+                window._productMap[safeIdx] = p;
+                const html = `
+                    <div class="product-card" data-id="${safeIdx}">
+                        <div class="product-media">
+                            ${p.image_url
+                                ? `<img src="${p.image_url}" alt="${p.code}" loading="lazy">`
+                                : `<div style="width:100%;height:100%;background:var(--gray-2);"></div>`
+                            }
+                        </div>
+                        ${p.material ? `<div class="material-tooltip">${p.material}</div>` : ''}
+                    </div>`;
+                const num = parseInt(p.code.replace(/\D/g, '')) || 0;
+                if (num % 2 === 0) leftHtml.push(html);
+                else rightHtml.push(html);
+            });
+
+            leftCol.innerHTML = leftHtml.join('');
+            rightCol.innerHTML = rightHtml.join('');
+
+            animateProductImages();
+
+            // Delegated click on cards
+            document.querySelectorAll('.product-card').forEach(card => {
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.dataset.id;
+                    const product = window._productMap[id];
+                    if (product) openProductModal(product);
+                });
+            });
+        }
+
+        function animateProductImages() {
+            if (window._productImageTriggers) {
+                window._productImageTriggers.forEach(trigger => trigger.kill());
+            }
+
+            window._productImageTriggers = [];
+
+            document.querySelectorAll('.product-card').forEach(card => {
+                const img = card.querySelector('.product-media img');
+                if (!img) return;
+
+                gsap.set(img, { scale: 1 });
+
+                const timeline = gsap.timeline({
+                    scrollTrigger: {
+                        trigger: card,
+                        start: 'top bottom',
+                        end: 'bottom top',
+                        scrub: 0.8
+                    }
+                });
+
+                timeline
+                    .to(img, { scale: 1.06, duration: 0.5, ease: 'none' })
+                    .to(img, { scale: 1, duration: 0.5, ease: 'none' });
+
+                window._productImageTriggers.push(timeline.scrollTrigger);
+            });
+        }
+
+        // Product Modal
+        const modal = document.getElementById('productModal');
+        const modalBackdrop = document.getElementById('modalBackdrop');
+        const modalClose = document.getElementById('modalClose');
+
+        function openProductModal(product) {
+            document.getElementById('modalImg').innerHTML = product.image_url
+                ? `<img src="${product.image_url}" alt="${product.code}">`
+                : '';
+            document.getElementById('modalPrice').textContent = product.price > 0
+                ? product.price.toLocaleString('vi-VN') + ' đ'
+                : 'Liên hệ';
+            document.getElementById('modalMaterial').textContent = product.material || '—';
+            document.getElementById('modalDesc').textContent = product.description || '—';
+
+            const sizesHtml = (product.sizes || [])
+                .filter(s => SIZE_ORDER.includes(s.size))
+                .map(s => `<span class="modal-size-tag ${s.stock > 0 ? 'available' : 'unavailable'}">${SIZE_LABELS[s.size] || s.size}</span>`)
+                .join('');
+            document.getElementById('modalSizes').innerHTML = sizesHtml;
+
+            modal.classList.add('active');
+            lenis && lenis.stop();
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            lenis && lenis.start();
+        }
+
+        modalBackdrop.addEventListener('click', closeModal);
+        modalClose.addEventListener('click', closeModal);
+    </script>
+</body>
+</html>
