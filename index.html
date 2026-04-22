@@ -149,6 +149,12 @@
             gap: 20px;
             padding: 0 8px;
         }
+        .products-load-more {
+            display: none; padding: 32px 0; text-align: center;
+            color: var(--gray-1); font-size: 13px; letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        .products-load-more.active { display: block; }
         .product-col {
             flex: 1;
         }
@@ -359,6 +365,7 @@
                 <div class="product-col" id="colLeft"></div>
                 <div class="product-col" id="colRight"></div>
             </div>
+                <div class="products-load-more" id="productsLoadMore">Đang tải thêm</div>
             </div>
         </section>
     </div>
@@ -397,8 +404,10 @@
             touchMultiplier: 2,
         });
         lenis.on('scroll', ScrollTrigger.update);
+        lenis.on('scroll', handleInfiniteProductScroll);
         gsap.ticker.add((time) => lenis.raf(time * 1000));
         gsap.ticker.lagSmoothing(0);
+        window.addEventListener('scroll', handleInfiniteProductScroll);
 
         // Custom Cursor
         const cursor = document.querySelector('.cursor');
@@ -439,7 +448,12 @@
             labels[size.value] = size.label;
             return labels;
         }, {});
+        const PRODUCTS_BATCH_SIZE = 50;
+        const SUPABASE_PAGE_SIZE = 1000;
         let suggestedSize = '';
+        let filteredProducts = [];
+        let renderedProductCount = 0;
+        let isAppendingProducts = false;
 
         // Step 1: Click SIZE → show size selection
         document.getElementById('sizeBtn').addEventListener('click', () => {
@@ -492,6 +506,13 @@
             if (suggestedSize) await selectSize(suggestedSize);
         });
         document.getElementById('homeBtn').addEventListener('click', goHome);
+        document.getElementById('productsGrid').addEventListener('click', (e) => {
+            const card = e.target.closest('.product-card');
+            if (!card) return;
+
+            const product = window._productMap[card.dataset.id];
+            if (product) openProductModal(product);
+        });
         window.addEventListener('resize', updateProductColumnOffset);
 
         function initSizeSuggestion() {
@@ -549,14 +570,7 @@
 
             let products = [];
             try {
-                const res = await fetch(`${supabaseUrl}/rest/v1/products_web?select=*&order=id.desc`, {
-                    headers: {
-                        apikey: anonKey,
-                        Authorization: `Bearer ${anonKey}`
-                    }
-                });
-                if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-                products = await res.json();
+                products = await fetchAllProducts(supabaseUrl, anonKey);
             } catch (err) {
                 console.error('Fetch error:', err);
                 document.getElementById('productsGrid').innerHTML =
@@ -602,25 +616,66 @@
             renderProducts(available, selectedSize);
         }
 
-        function renderProducts(products, selectedSize) {
+        async function fetchAllProducts(supabaseUrl, anonKey) {
+            const products = [];
+            let offset = 0;
+
+            while (true) {
+                const url = `${supabaseUrl}/rest/v1/products_web?select=*&order=id.desc&limit=${SUPABASE_PAGE_SIZE}&offset=${offset}`;
+                const res = await fetch(url, {
+                    headers: {
+                        apikey: anonKey,
+                        Authorization: `Bearer ${anonKey}`
+                    }
+                });
+
+                if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+
+                const page = await res.json();
+                products.push(...page);
+
+                if (page.length < SUPABASE_PAGE_SIZE) break;
+                offset += SUPABASE_PAGE_SIZE;
+            }
+
+            return products;
+        }
+
+        function renderProducts(products) {
             const grid = document.getElementById('productsGrid');
+            resetProductGrid();
+            filteredProducts = products;
+            renderedProductCount = 0;
+            window._productMap = {};
 
             if (products.length === 0) {
                 grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--gray-1);padding:80px 0;">Không có sản phẩm nào</p>';
                 return;
             }
 
+            appendProductBatch();
+            handleInfiniteProductScroll();
+        }
+
+        function appendProductBatch() {
+            if (isAppendingProducts || renderedProductCount >= filteredProducts.length) return;
+
+            isAppendingProducts = true;
+            const loadMore = document.getElementById('productsLoadMore');
             const leftCol = document.getElementById('colLeft');
             const rightCol = document.getElementById('colRight');
             const leftHtml = [];
             const rightHtml = [];
+            const nextProducts = filteredProducts.slice(
+                renderedProductCount,
+                renderedProductCount + PRODUCTS_BATCH_SIZE
+            );
 
-            // Store products globally for click handling
-            window._productMap = {};
+            loadMore.classList.remove('active');
 
-            products.forEach((p, idx) => {
-                const safeIdx = 'p' + idx;
-                window._productMap = window._productMap || {};
+            nextProducts.forEach((p, idx) => {
+                const productIndex = renderedProductCount + idx;
+                const safeIdx = 'p' + productIndex;
                 window._productMap[safeIdx] = p;
                 const html = `
                     <div class="product-card" data-id="${safeIdx}">
@@ -636,35 +691,32 @@
                 else rightHtml.push(html);
             });
 
-            leftCol.innerHTML = leftHtml.join('');
-            rightCol.innerHTML = rightHtml.join('');
+            leftCol.insertAdjacentHTML('beforeend', leftHtml.join(''));
+            rightCol.insertAdjacentHTML('beforeend', rightHtml.join(''));
+            renderedProductCount += nextProducts.length;
 
             updateProductColumnOffset();
             animateProductImages();
+            requestAnimationFrame(() => ScrollTrigger.refresh());
+            isAppendingProducts = false;
+        }
 
-            // Delegated click on cards
-            document.querySelectorAll('.product-card').forEach(card => {
-                card.style.cursor = 'pointer';
-                card.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const id = this.dataset.id;
-                    const product = window._productMap[id];
-                    if (product) openProductModal(product);
-                });
-            });
+        function handleInfiniteProductScroll() {
+            if (!filteredProducts.length || renderedProductCount >= filteredProducts.length) return;
+
+            const scrollBottom = window.innerHeight + window.scrollY;
+            const pageBottom = document.documentElement.scrollHeight;
+            if (pageBottom - scrollBottom < 900) appendProductBatch();
         }
 
         function animateProductImages() {
-            if (window._productImageTriggers) {
-                window._productImageTriggers.forEach(trigger => trigger.kill());
-            }
+            window._productImageTriggers = window._productImageTriggers || [];
 
-            window._productImageTriggers = [];
-
-            document.querySelectorAll('.product-card').forEach(card => {
+            document.querySelectorAll('.product-card:not([data-animated])').forEach(card => {
                 const img = card.querySelector('.product-media img');
                 if (!img) return;
 
+                card.dataset.animated = 'true';
                 gsap.set(card, { opacity: 1, y: 42, scale: 0.96 });
                 gsap.set(img, { scale: 0.92, yPercent: 3 });
 
@@ -713,12 +765,20 @@
         }
 
         function resetProductGrid() {
+            if (window._productImageTriggers) {
+                window._productImageTriggers.forEach(trigger => trigger.kill());
+                window._productImageTriggers = [];
+            }
+
             const grid = document.getElementById('productsGrid');
             grid.innerHTML = `
                 <div class="product-col" id="colLeft"></div>
                 <div class="product-col" id="colRight"></div>
             `;
             window._productMap = {};
+            filteredProducts = [];
+            renderedProductCount = 0;
+            document.getElementById('productsLoadMore').classList.remove('active');
             updateProductColumnOffset();
         }
 
