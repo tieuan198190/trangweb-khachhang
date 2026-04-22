@@ -665,14 +665,12 @@
                 const img = card.querySelector('.product-media img');
                 if (!img) return;
 
-                gsap.set(card, { opacity: 0.72, y: 42, scale: 0.96, filter: 'blur(5px)' });
-                gsap.set(img, { scale: 0.92, yPercent: 3, filter: 'saturate(0.85)' });
+                gsap.set(card, { opacity: 1, y: 42, scale: 0.96 });
+                gsap.set(img, { scale: 0.92, yPercent: 3 });
 
                 const revealTween = gsap.to(card, {
-                    opacity: 1,
                     y: 0,
                     scale: 1,
-                    filter: 'blur(0px)',
                     duration: 0.8,
                     ease: 'power3.out',
                     scrollTrigger: {
@@ -692,8 +690,8 @@
                 });
 
                 timeline
-                    .to(img, { scale: 1.16, yPercent: -2, filter: 'saturate(1.08) contrast(1.03)', duration: 0.5, ease: 'none' })
-                    .to(img, { scale: 1.02, yPercent: -5, filter: 'saturate(1) contrast(1)', duration: 0.5, ease: 'none' });
+                    .to(img, { scale: 1.16, yPercent: -2, duration: 0.5, ease: 'none' })
+                    .to(img, { scale: 1.02, yPercent: -5, duration: 0.5, ease: 'none' });
 
                 window._productImageTriggers.push(timeline.scrollTrigger);
                 window._productImageTriggers.push(revealTween.scrollTrigger);
